@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: busgo-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false        # You set this manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false        # You set this manually in Render dashboard
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ALLOWED_ORIGINS
+        value: https://busgo-backend.onrender.com,http://localhost:5000
+    healthCheckPath: /health
