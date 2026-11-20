@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BusGo - Smart Bus Ticket Booking Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===================== TOAST NOTIFICATION CONTAINER ===================== -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ===================== HEADER / NAVBAR ===================== -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo" onclick="showSection('homeSection')">
+        <span class="logo-icon">🚌</span>Bus<span class="logo-accent">Go</span>
+      </div>
+
+      <nav class="nav-links">
+        <a href="#" class="nav-tab active" onclick="showSection('homeSection'); return false;">Bus Tickets</a>
+        <a href="#" onclick="scrollToOffers(); return false;">Offers</a>
+        <a href="#" onclick="openOperatorModal(); return false;">Operator Portal</a>
+        <a href="#" onclick="openHelpModal(); return false;">Help &amp; Support</a>
+        <a href="react-validation.html" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #ffffff !important; padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35); transition: transform 0.2s ease;">⚛️ React Validation</a>
+      </nav>
+
+      <div class="nav-right">
+        <!-- Live Wallet Quick Pill (Shown when logged in) -->
+        <button class="wallet-pill-btn hidden" id="navWalletBtn" onclick="openWalletModal()">
+          <span>💳</span> <span id="navWalletBal">₹0</span>
+        </button>
+        <button class="icon-link" onclick="showMyBookings()">
+          <span>📋</span> <span>Bookings</span>
+        </button>
+        <button class="icon-link account-btn" onclick="openAccountPanel()">
+          <span>👤</span> <span id="navAccountText">Account</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== HOME SECTION ===================== -->
+  <main id="homeSection">
+
+    <!-- HERO SECTION -->
+    <div class="hero" id="home" style="background-image: url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?fm=jpg&amp;q=80&amp;w=1600&amp;auto=format&amp;fit=crop');">
+      <div class="hero-fade"></div>
+    </div>
+
+    <!-- SEARCH BUS FORM -->
+    <div class="search-card-wrap">
+      <div class="search-box" id="search">
+
+        <div class="search-tabs-row">
+          <div class="search-tabs">
+            <button class="mode-tab active" type="button">🚌 Buses</button>
+            <button class="mode-tab" type="button" onclick="showToast('info', 'Demo project is dedicated to full-stack bus ticket booking.')">✈️ Flights</button>
+            <button class="mode-tab" type="button" onclick="showToast('info', 'Demo project is dedicated to full-stack bus ticket booking.')">🚆 Trains</button>
+            <button class="mode-tab" type="button" onclick="showToast('info', 'Demo project is dedicated to full-stack bus ticket booking.')">🏨 Hotels</button>
+          </div>
+          <div class="search-tagline">India's Smart Bus Ticket Booking Platform</div>
+        </div>
+
+        <div class="search-fields-row">
+          <div class="field-group">
+            <label>📍 Leaving From</label>
+            <input type="text" id="fromCity" placeholder="Source city (e.g. Pune)" value="Pune" autocomplete="off">
+          </div>
+
+          <button class="swap-btn" type="button" onclick="swapLocations()" title="Swap Cities">&#8646;</button>
+
+          <div class="field-group">
+            <label>📍 Going To</label>
+            <input type="text" id="toCity" placeholder="Destination city (e.g. Mumbai)" value="Mumbai" autocomplete="off">
+          </div>
+
+          <div class="field-group date-field">
+            <label>📅 Departure Date</label>
+            <input type="date" id="journeyDate">
+          </div>
+
+          <button type="button" class="quick-date-btn" onclick="setQuickDate(0)">Today</button>
+          <button type="button" class="quick-date-btn" onclick="setQuickDate(1)">Tomorrow</button>
+
+          <button class="btn search-btn" type="button" onclick="searchBuses()">Search Buses &rarr;</button>
+        </div>
+
+        <label class="toggle-row ladies-row">
+          <span>👩 Ladies Priority Booking <a href="#" onclick="showToast('info', 'Shows buses with dedicated reserved rows and 24/7 priority emergency support.'); return false;">Know more</a></span>
+          <span class="toggle-switch">
+            <input type="checkbox" id="ladiesToggle">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- SEARCH RESULTS SECTION -->
+    <section class="section" id="resultsSection" style="display:none">
+      <div class="results-container">
+        <div class="results-header-row">
+          <div>
+            <h2 id="resultsTitle">Search Results</h2>
+            <p id="resultsSubtitle" class="text-muted"></p>
+          </div>
+          <div class="filter-controls">
+            <select id="fType" class="bk-input filter-select" onchange="renderResults()">
+              <option value="all">All Bus Types</option>
+              <option value="ac">AC Buses</option>
+              <option value="nonac">Non-AC Buses</option>
+              <option value="sleeper">Sleeper Coaches</option>
+              <option value="seater">Seater Coaches</option>
+            </select>
+            <select id="fSort" class="bk-input filter-select" onchange="renderResults()">
+              <option value="price">Sort: Price (Lowest First)</option>
+              <option value="rating">Sort: Operator Rating</option>
+              <option value="time">Sort: Departure Time</option>
+            </select>
+          </div>
+        </div>
+        <div id="resultsList"></div>
+      </div>
+    </section>
+
+    <!-- OFFERS SECTION -->
+    <section class="section" id="offersSection">
+      <div class="section-heading-row">
+        <div>
+          <h2 class="section-title left">Offers &amp; Promo Deals</h2>
+          <p class="section-subtext">Verified discounts calculated directly through our backend booking engine</p>
+        </div>
+      </div>
+
+      <div class="offer-tabs">
+        <button class="tab-btn active" onclick="filterOffers('all', this)">All Deals</button>
+        <button class="tab-btn" onclick="filterOffers('first', this)">New User</button>
+        <button class="tab-btn" onclick="filterOffers('weekend', this)">Weekend Travel</button>
+        <button class="tab-btn" onclick="filterOffers('student', this)">Student Special</button>
+        <button class="tab-btn" onclick="filterOffers('festival', this)">Festival Savings</button>
+      </div>
+
+      <div class="card-grid offer-grid" id="offerGrid">
+        <!-- Rendered dynamically from backend /api/offers -->
+      </div>
+    </section>
+
+    <!-- WHAT'S NEW SECTION -->
+    <section class="section alt-bg">
+      <h2 class="section-title left">What's New on BusGo</h2>
+      <div class="card-grid whats-new-grid">
+        <div class="whatsnew-card purple">
+          <h4>🛡️ Travel Protection</h4>
+          <p>Trip cancellation &amp; baggage loss cover included on select routes.</p>
+          <a href="#" onclick="showToast('info', 'Travel protection is automatically included in booking insurance.'); return false;">Learn More &rarr;</a>
+        </div>
+        <div class="whatsnew-card maroon">
+          <h4>⚡ Instant Wallet Refund</h4>
+          <p>Get instant 100% refund credited back into your BusGo Wallet on cancellation.</p>
+          <a href="#" onclick="openWalletModal(); return false;">Open Wallet &rarr;</a>
+        </div>
+        <div class="whatsnew-card white">
+          <h4>🎁 Test Gift Vouchers</h4>
+          <p>Generate random demo gift cards and redeem them directly for test credits.</p>
+          <a href="#" onclick="openGiftCardModal(); return false;">Redeem Voucher &rarr;</a>
+        </div>
+        <div class="whatsnew-card blue">
+          <h4>🏢 Bus Operator Portal</h4>
+          <p>Are you a bus owner? Register your company and manage fleet schedules.</p>
+          <a href="#" onclick="openOperatorModal(); return false;">Operator Center &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- POPULAR ROUTES SECTION -->
+    <section class="section">
+      <h2 class="section-title left">Popular Bus Routes</h2>
+      <div class="card-grid" id="popularRoutes">
+        <div class="route-card" onclick="quickSearch('Pune','Mumbai')">
+          <span class="route-icon">🚌</span>
+          <div><strong>Pune &rarr; Mumbai</strong><small>3h 30m · From ₹180</small></div>
+        </div>
+        <div class="route-card" onclick="quickSearch('Mumbai','Pune')">
+          <span class="route-icon">🚌</span>
+          <div><strong>Mumbai &rarr; Pune</strong><small>3h 30m · From ₹150</small></div>
+        </div>
+        <div class="route-card" onclick="quickSearch('Delhi','Jaipur')">
+          <span class="route-icon">🚌</span>
+          <div><strong>Delhi &rarr; Jaipur</strong><small>4h 30m · From ₹320</small></div>
+        </div>
+        <div class="route-card" onclick="quickSearch('Bangalore','Chennai')">
+          <span class="route-icon">🚌</span>
+          <div><strong>Bangalore &rarr; Chennai</strong><small>6h 0m · From ₹380</small></div>
+        </div>
+        <div class="route-card" onclick="quickSearch('Hyderabad','Bangalore')">
+          <span class="route-icon">🚌</span>
+          <div><strong>Hyderabad &rarr; Bangalore</strong><small>6h 0m · From ₹550</small></div>
+        </div>
+        <div class="route-card" onclick="quickSearch('Nagpur','Pune')">
+          <span class="route-icon">🚌</span>
+          <div><strong>Nagpur &rarr; Pune</strong><small>7h 0m · From ₹250</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- POPULAR BUS OPERATORS -->
+    <section class="section alt-bg">
+      <div class="section-heading-row">
+        <div>
+          <h2 class="section-title left">Popular Bus Operators</h2>
+          <p class="section-subtext">Verified fleet partners synced directly from MongoDB</p>
+        </div>
+      </div>
+      <div class="card-grid operator-grid" id="operatorGrid">
+        <!-- Rendered dynamically from backend /api/operators/popular -->
+      </div>
+    </section>
+
+    <!-- WHY CHOOSE BUSGO -->
+    <section class="section">
+      <h2 class="section-title">Why Choose BusGo?</h2>
+      <div class="card-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Verified Operators</h3>
+          <p>Every operator undergoes safety and vehicle verification before listing.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💳</div>
+          <h3>BusGo Wallet</h3>
+          <p>One-tap checkout and instant cancellation refunds credited automatically.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏷️</div>
+          <h3>Guaranteed Best Prices</h3>
+          <p>Verified promotional promo codes and student discount coupons on every route.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖨️</div>
+          <h3>Clean E-Ticket &amp; PDF</h3>
+          <p>Download professional A4 formatted boarding passes with verification QR code.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="footer-columns">
+      <div class="footer-col">
+        <h4>About BusGo</h4>
+        <a href="#" onclick="showToast('info', 'BusGo is a full-stack educational bus ticketing demonstration.'); return false;">About us</a>
+        <a href="#" onclick="scrollToOffers(); return false;">Promotions &amp; Offers</a>
+        <a href="#" onclick="openHelpModal(); return false;">Customer Support</a>
+        <a href="#" onclick="openWalletModal(); return false;">BusGo Wallet</a>
+      </div>
+      <div class="footer-col">
+        <h4>Operator &amp; Partners</h4>
+        <a href="#" onclick="openOperatorModal('register'); return false;">Bus Operator Registration</a>
+        <a href="#" onclick="openOperatorModal('login'); return false;">Operator Login Portal</a>
+        <a href="#" onclick="openOperatorDashboard(); return false;">Operator Dashboard</a>
+        <a href="#" onclick="openGiftCardModal(); return false;">Redeem Test Gift Card</a>
+      </div>
+      <div class="footer-col">
+        <h4>Popular Routes</h4>
+        <a href="#" onclick="quickSearch('Pune','Mumbai'); return false;">Pune to Mumbai Bus</a>
+        <a href="#" onclick="quickSearch('Delhi','Jaipur'); return false;">Delhi to Jaipur Bus</a>
+        <a href="#" onclick="quickSearch('Bangalore','Chennai'); return false;">Bangalore to Chennai Bus</a>
+        <a href="#" onclick="quickSearch('Hyderabad','Bangalore'); return false;">Hyderabad to Bangalore Bus</a>
+      </div>
+      <div class="footer-col">
+        <h4>Security &amp; Policy</h4>
+        <a href="#" onclick="showToast('info', 'All payments are simulated for academic demonstration. No real financial data is collected.'); return false;">Payment Policy</a>
+        <a href="#" onclick="showToast('info', 'Customer and operator permissions are strictly enforced with JWT and bcrypt.'); return false;">Security &amp; Privacy</a>
+        <a href="#" onclick="openHelpModal(); return false;">Support Helpline: 1800-000-000</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-brand"><span class="logo-icon">🚌</span> Bus<span class="logo-accent">Go</span></div>
+      <p>BusGo is a full-stack bus booking project with Node.js, Express, MongoDB, and modern responsive frontend. Simulated payment flow for college demonstration.</p>
+    </div>
+    <p class="footer-copy">&copy; 2026 BusGo Project. All rights reserved.</p>
+  </footer>
+
+
+  <!-- ===================== ACCOUNT SLIDE PANEL ===================== -->
+  <div class="overlay-dim" id="accountOverlay" onclick="closeAccountPanel()"></div>
+  <div class="account-panel" id="accountPanel">
+    <div class="account-panel-header">
+      <h3>My Account</h3>
+      <button class="close-btn" onclick="closeAccountPanel()">&times;</button>
+    </div>
+
+    <div class="account-panel-body">
+      <div id="accountLoginArea"></div>
+
+      <h4>My Travel &amp; Details</h4>
+      <div class="account-list-item" onclick="showMyBookings()">
+        <span>📋 My Bookings</span> <span>&rsaquo;</span>
+      </div>
+      <div class="account-list-item" onclick="openPersonalInfoModal()">
+        <span>🙍 Personal Information</span> <span>&rsaquo;</span>
+      </div>
+
+      <h4>Payments &amp; Rewards</h4>
+      <div class="account-list-item" onclick="openWalletModal()">
+        <span>💳 BusGo Wallet <strong id="accountWalletBadge" class="wallet-badge">₹0</strong></span> <span>&rsaquo;</span>
+      </div>
+      <div class="account-list-item" onclick="openGiftCardModal()">
+        <span>🎁 Redeem Gift Card</span> <span>&rsaquo;</span>
+      </div>
+
+      <h4>Operator Services</h4>
+      <div class="account-list-item" onclick="openOperatorModal()">
+        <span>🏢 Bus Operator Portal</span> <span>&rsaquo;</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== CUSTOMER AUTH MODAL ===================== -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-box auth-modal-box">
+      <div class="modal-box-header">
+        <h2 id="authTitle">Login to get exciting offers</h2>
+        <button class="close-btn" onclick="closeLoginModal()">&times;</button>
+      </div>
+
+      <div id="registerFields" style="display:none">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="authName" placeholder="Enter your full name" class="bk-input">
+
+        <!-- Country selector & phone validation -->
+        <label class="form-label">Mobile Number</label>
+        <div class="phone-input-group">
+          <select id="authCountryCode" class="country-select" onchange="updatePhoneValidationHint('auth')"></select>
+          <input type="tel" id="authPhone" placeholder="Enter mobile number" class="bk-input phone-number-input">
+        </div>
+        <p id="authPhoneHint" class="input-hint"></p>
+      </div>
+
+      <label class="form-label">Email Address</label>
+      <input type="email" id="authEmail" placeholder="e.g. rahul@busgo.com" class="bk-input">
+
+      <label class="form-label">Password</label>
+      <input type="password" id="authPassword" placeholder="Minimum 6 characters" class="bk-input">
+
+      <p id="authError" class="form-error-msg"></p>
+      <button class="btn search-btn full-width" id="authSubmit" onclick="submitAuth()">Log in</button>
+      <p class="signup-line" id="authToggle">New here? <a href="#" onclick="setAuthMode('register'); return false;">Sign up</a></p>
+
+      <div class="demo-credentials-box">
+        <strong>Demo Customer Account:</strong><br>
+        <code>rahul@busgo.com</code> / <code>Password123</code> (Wallet: ₹750)
+      </div>
+
+      <p class="login-terms">By logging in, you agree to BusGo's Terms &amp; Conditions and Privacy Policy.</p>
+    </div>
+  </div>
+
+
+  <!-- ===================== PERSONAL INFORMATION MODAL ===================== -->
+  <div class="modal-overlay" id="personalInfoModal">
+    <div class="modal-box big-box">
+      <div class="modal-box-header">
+        <h2>🙍 Personal Information</h2>
+        <button class="close-btn" onclick="closeM('personalInfoModal')">&times;</button>
+      </div>
+      <form id="personalInfoForm" onsubmit="savePersonalInfo(event)">
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Full Name *</label>
+            <input type="text" id="piName" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Email Address</label>
+            <input type="email" id="piEmail" class="bk-input" disabled title="Email is linked to your login identity">
+          </div>
+        </div>
+
+        <label class="form-label">Phone Number with Country Code *</label>
+        <div class="phone-input-group">
+          <select id="piCountryCode" class="country-select" onchange="updatePhoneValidationHint('pi')"></select>
+          <input type="tel" id="piPhone" class="bk-input phone-number-input" placeholder="e.g. 9876543210" required>
+        </div>
+        <p id="piPhoneHint" class="input-hint"></p>
+
+        <div class="form-grid-2" style="margin-top:10px">
+          <div>
+            <label class="form-label">Date of Birth</label>
+            <input type="date" id="piDob" class="bk-input">
+          </div>
+          <div>
+            <label class="form-label">Gender</label>
+            <select id="piGender" class="bk-input">
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">City</label>
+            <input type="text" id="piCity" placeholder="e.g. Pune" class="bk-input">
+          </div>
+          <div>
+            <label class="form-label">Address</label>
+            <input type="text" id="piAddress" placeholder="Home or business address" class="bk-input">
+          </div>
+        </div>
+
+        <p id="piError" class="form-error-msg"></p>
+        <div class="modal-actions-row">
+          <button type="button" class="btn btn-secondary" onclick="closeM('personalInfoModal')">Cancel</button>
+          <button type="submit" class="btn search-btn" id="piSaveBtn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ===================== BUSGO WALLET MODAL ===================== -->
+  <div class="modal-overlay" id="walletModal">
+    <div class="modal-box big-box">
+      <div class="modal-box-header">
+        <h2>💳 BusGo Wallet</h2>
+        <button class="close-btn" onclick="closeM('walletModal')">&times;</button>
+      </div>
+
+      <!-- Wallet Card Display -->
+      <div class="wallet-card">
+        <div class="wallet-card-top">
+          <span>BusGo Digital Cash</span>
+          <span class="wallet-chip">SIMULATED CREDITS</span>
+        </div>
+        <div class="wallet-balance-amount" id="walletBalanceBig">₹0.00</div>
+        <div class="wallet-card-bottom">
+          <span id="walletUserName">Customer</span>
+          <span>Instant One-Tap Checkout</span>
+        </div>
+      </div>
+
+      <!-- Add Funds Section -->
+      <div class="wallet-topup-section">
+        <h4>Top-up Wallet (Simulated Test Credits)</h4>
+        <p class="section-subtext">Add test money to your wallet for booking demonstration.</p>
+        <div class="preset-amounts-row">
+          <button type="button" class="preset-amt-btn" onclick="setTopupAmount(200)">+ ₹200</button>
+          <button type="button" class="preset-amt-btn" onclick="setTopupAmount(500)">+ ₹500</button>
+          <button type="button" class="preset-amt-btn" onclick="setTopupAmount(1000)">+ ₹1,000</button>
+          <button type="button" class="preset-amt-btn" onclick="setTopupAmount(2000)">+ ₹2,000</button>
+        </div>
+        <div class="topup-input-row">
+          <input type="number" id="topupAmountInput" placeholder="Enter amount (₹)" class="bk-input" min="10" max="10000" value="500">
+          <button type="button" class="btn search-btn" onclick="submitWalletTopup()">Add Funds</button>
+        </div>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="wallet-history-section">
+        <h4>Transaction History</h4>
+        <div id="walletTransactionsList" class="wallet-transactions-list">
+          <p class="text-muted">Loading transactions...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== GIFT CARD MODAL ===================== -->
+  <div class="modal-overlay" id="giftCardModal">
+    <div class="modal-box big-box">
+      <div class="modal-box-header">
+        <h2>🎁 BusGo Gift Cards</h2>
+        <button class="close-btn" onclick="closeM('giftCardModal')">&times;</button>
+      </div>
+
+      <div class="giftcard-tabs">
+        <button class="tab-btn active" id="gcTabRedeem" onclick="switchGiftCardTab('redeem')">Redeem Gift Card</button>
+        <button class="tab-btn" id="gcTabGenerate" onclick="switchGiftCardTab('generate')">Generate Demo Voucher</button>
+      </div>
+
+      <!-- Redeem Panel -->
+      <div id="gcRedeemPanel">
+        <div class="redeem-box">
+          <label class="form-label">Enter Gift Card Code</label>
+          <div style="display:flex;gap:10px">
+            <input type="text" id="giftCardCodeInput" placeholder="e.g. BUSGO250 or GIFT-XXXX-2026" class="bk-input" style="text-transform:uppercase;margin:0">
+            <button class="btn search-btn" onclick="redeemGiftCard()">Redeem Now</button>
+          </div>
+          <p id="gcRedeemMsg" class="input-hint" style="margin-top:8px"></p>
+        </div>
+
+        <div class="demo-voucher-list-box">
+          <h4>Sample Demo Codes Ready to Redeem:</h4>
+          <div class="sample-codes-grid">
+            <div class="sample-code-chip" onclick="fillGiftCardCode('BUSGO100')">BUSGO100 <span>(₹100)</span></div>
+            <div class="sample-code-chip" onclick="fillGiftCardCode('BUSGO250')">BUSGO250 <span>(₹250)</span></div>
+            <div class="sample-code-chip" onclick="fillGiftCardCode('BUSGO500')">BUSGO500 <span>(₹500)</span></div>
+            <div class="sample-code-chip" onclick="fillGiftCardCode('FESTIVE300')">FESTIVE300 <span>(₹300)</span></div>
+          </div>
+          <small class="text-muted">Click any code above to prefill and test redemption.</small>
+        </div>
+      </div>
+
+      <!-- Generate Demo Panel -->
+      <div id="gcGeneratePanel" style="display:none">
+        <p class="section-subtext">Generate a random demo gift card voucher with unique code to test the verification and redemption workflow.</p>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:15px">
+          <select id="gcGenAmount" class="bk-input" style="width:auto;margin:0">
+            <option value="100">₹100 Voucher</option>
+            <option value="250" selected>₹250 Voucher</option>
+            <option value="500">₹500 Voucher</option>
+          </select>
+          <button class="btn search-btn" onclick="generateDemoGiftCard()">Generate Random Card</button>
+        </div>
+
+        <div id="generatedCardDisplay" style="display:none" class="giftcard-voucher-card">
+          <div class="voucher-tag">TEST CREDITS</div>
+          <div class="voucher-amount" id="genVoucherAmount">₹250</div>
+          <div class="voucher-code" id="genVoucherCode">GIFT-XXXX-2026</div>
+          <p class="voucher-validity" id="genVoucherExpiry">Valid for 30 days</p>
+          <button class="btn btn-secondary btn-sm" onclick="copyGeneratedCard()">Copy Code &amp; Redeem &rarr;</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ===================== OPERATOR AUTH MODAL ===================== -->
+  <div class="modal-overlay" id="operatorAuthModal">
+    <div class="modal-box big-box">
+      <div class="modal-box-header">
+        <h2 id="opAuthTitle">🏢 Bus Operator Portal</h2>
+        <button class="close-btn" onclick="closeM('operatorAuthModal')">&times;</button>
+      </div>
+
+      <div class="offer-tabs" style="margin-bottom:16px">
+        <button class="tab-btn active" id="opTabLogin" onclick="switchOperatorAuth('login')">Operator Login</button>
+        <button class="tab-btn" id="opTabRegister" onclick="switchOperatorAuth('register')">Register Company</button>
+      </div>
+
+      <!-- Operator Login Form -->
+      <form id="opLoginForm" onsubmit="submitOperatorLogin(event)">
+        <label class="form-label">Operator Email</label>
+        <input type="email" id="opLoginEmail" class="bk-input" placeholder="e.g. shree@travels.com" required>
+
+        <label class="form-label">Password</label>
+        <input type="password" id="opLoginPassword" class="bk-input" placeholder="Enter operator password" required>
+
+        <p id="opLoginError" class="form-error-msg"></p>
+        <button type="submit" class="btn search-btn full-width">Login to Dashboard</button>
+
+        <div class="demo-credentials-box">
+          <strong>Verified Demo Operator:</strong><br>
+          <code>shree@travels.com</code> / <code>Password123</code><br>
+          <small class="text-muted">Unverified demo operator: <code>apex@voyager.com</code> / <code>Password123</code></small>
+        </div>
+      </form>
+
+      <!-- Operator Registration Form -->
+      <form id="opRegForm" style="display:none" onsubmit="submitOperatorRegister(event)">
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Company / Fleet Name *</label>
+            <input type="text" id="opRegCompany" placeholder="e.g. Apex Voyager" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Owner Full Name *</label>
+            <input type="text" id="opRegOwner" placeholder="e.g. Suresh Menon" class="bk-input" required>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Business Email *</label>
+            <input type="email" id="opRegEmail" placeholder="e.g. contact@apexvoyager.com" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Registration / GST Number</label>
+            <input type="text" id="opRegGst" placeholder="e.g. 27AAAAA0000A1Z5" class="bk-input">
+          </div>
+        </div>
+
+        <label class="form-label">Contact Mobile Number *</label>
+        <div class="phone-input-group">
+          <select id="opRegCountryCode" class="country-select" onchange="updatePhoneValidationHint('op')"></select>
+          <input type="tel" id="opRegPhone" placeholder="Enter verified mobile number" class="bk-input phone-number-input" required>
+        </div>
+        <p id="opRegPhoneHint" class="input-hint"></p>
+
+        <div class="form-grid-2" style="margin-top:10px">
+          <div>
+            <label class="form-label">Head Office City</label>
+            <input type="text" id="opRegCity" placeholder="e.g. Pune" class="bk-input">
+          </div>
+          <div>
+            <label class="form-label">Business Address</label>
+            <input type="text" id="opRegAddress" placeholder="Street / Transport Hub address" class="bk-input">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Password * (min 6 chars)</label>
+            <input type="password" id="opRegPassword" class="bk-input" required minlength="6">
+          </div>
+          <div>
+            <label class="form-label">Confirm Password *</label>
+            <input type="password" id="opRegConfirmPassword" class="bk-input" required minlength="6">
+          </div>
+        </div>
+
+        <label class="checkbox-label" style="margin:10px 0 15px 0">
+          <input type="checkbox" id="opRegAutoVerify">
+          <span>Grant instant verification for academic demo (otherwise starts as unverified pending admin review)</span>
+        </label>
+
+        <p id="opRegError" class="form-error-msg"></p>
+        <button type="submit" class="btn search-btn full-width">Register Operator Account</button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ===================== OPERATOR DASHBOARD MODAL ===================== -->
+  <div class="modal-overlay" id="operatorDashboardModal">
+    <div class="modal-box dashboard-box">
+      <div class="dashboard-topbar">
+        <div class="dashboard-header-title">
+          <h2 id="dashCompanyName">Operator Dashboard</h2>
+          <div id="dashVerificationBadge" class="verification-pill verified">VERIFIED OPERATOR</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="toggleCurrentOperatorVerification()">Toggle Verification Status</button>
+          <button class="btn btn-secondary btn-sm" onclick="operatorLogout()">Logout</button>
+          <button class="close-btn" onclick="closeM('operatorDashboardModal')">&times;</button>
+        </div>
+      </div>
+
+      <!-- Verification Notice banner if unverified -->
+      <div id="unverifiedNoticeBanner" class="alert-banner warning" style="display:none">
+        <strong>⚠️ Account Pending Verification:</strong> Your operator registration is under review. You can manage your fleet in demo mode. Click "Toggle Verification Status" above to approve.
+      </div>
+
+      <!-- Analytics Stats Cards -->
+      <div class="stat-cards-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="dashTotalBuses">0</div>
+          <div class="stat-label">Active Fleet Buses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="dashTotalBookings">0</div>
+          <div class="stat-label">Customer Bookings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="dashTotalRevenue">₹0</div>
+          <div class="stat-label">Total Revenue Earned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="dashRating">★ 4.5</div>
+          <div class="stat-label">Fleet Safety Rating</div>
+        </div>
+      </div>
+
+      <!-- Dashboard Tabs -->
+      <div class="offer-tabs" style="margin:20px 0 15px 0">
+        <button class="tab-btn active" id="dashTabFleet" onclick="switchDashboardTab('fleet')">🚌 Manage Bus Fleet</button>
+        <button class="tab-btn" id="dashTabBookings" onclick="switchDashboardTab('bookings')">📋 Customer Bookings</button>
+        <button class="btn search-btn btn-sm" style="margin-left:auto" onclick="openAddBusModal()">+ Add New Bus</button>
+      </div>
+
+      <!-- Fleet List View -->
+      <div id="dashFleetPanel">
+        <div id="dashBusList" class="dash-bus-grid">
+          <p class="text-muted">Loading fleet buses...</p>
+        </div>
+      </div>
+
+      <!-- Passenger Bookings View -->
+      <div id="dashBookingsPanel" style="display:none">
+        <div id="dashBookingsList">
+          <p class="text-muted">Loading customer bookings for your buses...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== ADD / EDIT BUS MODAL ===================== -->
+  <div class="modal-overlay" id="busFormModal">
+    <div class="modal-box big-box">
+      <div class="modal-box-header">
+        <h2 id="busFormTitle">Add New Bus to Fleet</h2>
+        <button class="close-btn" onclick="closeM('busFormModal')">&times;</button>
+      </div>
+
+      <form id="busForm" onsubmit="saveBus(event)">
+        <input type="hidden" id="busFormId">
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Bus Number (Registration Plate) *</label>
+            <input type="text" id="bfNumber" placeholder="e.g. MH-12-AB-9999" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Bus Type *</label>
+            <select id="bfType" class="bk-input" required>
+              <option value="AC Sleeper">AC Sleeper</option>
+              <option value="Non-AC Sleeper">Non-AC Sleeper</option>
+              <option value="AC Seater">AC Seater</option>
+              <option value="Non-AC Seater">Non-AC Seater</option>
+              <option value="Volvo AC">Volvo AC</option>
+              <option value="Semi Sleeper">Semi Sleeper</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Leaving From (Source City) *</label>
+            <input type="text" id="bfFrom" placeholder="e.g. Pune" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Going To (Destination City) *</label>
+            <input type="text" id="bfTo" placeholder="e.g. Mumbai" class="bk-input" required>
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div>
+            <label class="form-label">Departure Time *</label>
+            <input type="time" id="bfDeparture" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Arrival Time *</label>
+            <input type="time" id="bfArrival" class="bk-input" required>
+          </div>
+          <div>
+            <label class="form-label">Duration</label>
+            <input type="text" id="bfDuration" placeholder="e.g. 3h 30m" class="bk-input" required>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Ticket Fare (₹ per seat) *</label>
+            <input type="number" id="bfFare" placeholder="350" class="bk-input" min="50" max="10000" required>
+          </div>
+          <div>
+            <label class="form-label">Total Seats *</label>
+            <input type="number" id="bfTotalSeats" placeholder="40" class="bk-input" min="10" max="60" value="40" required>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Boarding Point (Pickup)</label>
+            <input type="text" id="bfBoarding" placeholder="e.g. Swargate Bus Terminal" class="bk-input">
+          </div>
+          <div>
+            <label class="form-label">Dropping Point (Dropoff)</label>
+            <input type="text" id="bfDropping" placeholder="e.g. Dadar East TT Circle" class="bk-input">
+          </div>
+        </div>
+
+        <label class="form-label">Amenities Included</label>
+        <div class="amenities-checkbox-group">
+          <label><input type="checkbox" name="bfAmenity" value="WiFi" checked> WiFi</label>
+          <label><input type="checkbox" name="bfAmenity" value="Charging Point" checked> Charging</label>
+          <label><input type="checkbox" name="bfAmenity" value="Blanket"> Blanket</label>
+          <label><input type="checkbox" name="bfAmenity" value="Water Bottle"> Water Bottle</label>
+          <label><input type="checkbox" name="bfAmenity" value="Air Conditioning" checked> AC</label>
+        </div>
+
+        <p id="busFormError" class="form-error-msg"></p>
+        <div class="modal-actions-row">
+          <button type="button" class="btn btn-secondary" onclick="closeM('busFormModal')">Cancel</button>
+          <button type="submit" class="btn search-btn" id="busFormSubmitBtn">Save Bus</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ===================== SEAT SELECTION & BOOKING CHECKOUT MODAL ===================== -->
+  <div class="modal-overlay" id="bookModal">
+    <div class="modal-box big-box checkout-modal-box">
+      <div class="modal-box-header">
+        <h2 id="checkoutModalTitle">Select Seats &amp; Passenger</h2>
+        <button class="close-btn" onclick="closeM('bookModal')">&times;</button>
+      </div>
+
+      <div id="bookBody"></div>
+    </div>
+  </div>
+
+
+  <!-- ===================== SIMULATED PAYMENT PROCESSING GATEWAY MODAL ===================== -->
+  <div class="modal-overlay" id="paymentProcessModal">
+    <div class="modal-box payment-gateway-box">
+      <div class="gateway-header">
+        <span class="lock-icon">🔒</span>
+        <h3>BusGo Secure Payment Gateway</h3>
+        <span class="security-badge">256-Bit SSL Encrypted (Demo)</span>
+      </div>
+
+      <div class="gateway-body">
+        <div class="payment-spinner-wrap">
+          <div class="payment-spinner"></div>
+        </div>
+        <h4 id="payProcessStep">Contacting Payment Gateway...</h4>
+        <p id="payProcessSubtext" class="text-muted">Simulating secure banking authorization...</p>
+        <div class="amount-pill" id="payProcessAmountPill">Payable: ₹0</div>
+      </div>
+
+      <div class="gateway-footer">
+        <small>Academic Demonstration: No real money will be charged or collected.</small>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== PROFESSIONAL E-TICKET & PRINT MODAL ===================== -->
+  <div class="modal-overlay" id="ticketModal">
+    <div class="modal-box big-box ticket-container-box">
+      <div class="no-print ticket-top-actions">
+        <button class="btn btn-secondary btn-sm" onclick="closeM('ticketModal')">&larr; Close</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn search-btn btn-sm" onclick="window.print()">🖨️ Print Ticket</button>
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">📥 Save as PDF</button>
+        </div>
+      </div>
+
+      <!-- The printable ticket container -->
+      <div id="printableTicket" class="printable-ticket-card"></div>
+    </div>
+  </div>
+
+
+  <!-- ===================== MY BOOKINGS MODAL ===================== -->
+  <div class="modal-overlay" id="bookingsModal">
+    <div class="modal-box big-box">
+      <div class="modal-box-header">
+        <h2>📋 My Bookings</h2>
+        <button class="close-btn" onclick="closeM('bookingsModal')">&times;</button>
+      </div>
+      <div id="bookingsBody"></div>
+    </div>
+  </div>
+
+
+  <!-- ===================== HELP MODAL ===================== -->
+  <div class="modal-overlay" id="helpModal">
+    <div class="modal-box">
+      <div class="modal-box-header">
+        <h2>📞 BusGo Support</h2>
+        <button class="close-btn" onclick="closeM('helpModal')">&times;</button>
+      </div>
+      <div style="font-size:14px;line-height:1.6">
+        <p><strong>Toll-Free Helpline:</strong><br><span style="font-size:18px;color:#b93333;font-weight:700">1800-000-000</span></p>
+        <p style="margin-top:10px"><strong>Email Support:</strong><br><code>support@busgo.com</code></p>
+        <p style="margin-top:10px"><strong>Operating Hours:</strong><br>24/7 Academic Project Support Line</p>
+        <hr style="margin:15px 0;border:0;border-top:1px solid #eee">
+        <p class="text-muted"><small>BusGo is a college demonstration web application. All features including bus search, seat booking, wallet, promo codes, and tickets are fully integrated with MongoDB.</small></p>
+      </div>
+      <button class="btn search-btn full-width" onclick="closeM('helpModal')">Close</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

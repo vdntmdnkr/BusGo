@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BusGo — React Client-Side Validation Application</title>
+  <!-- Tailwind CSS CDN for instant styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & Babel CDNs so this file also runs standalone by double clicking -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    @media print {
+      body * { visibility: hidden !important; }
+      #printable-ticket, #printable-ticket * { visibility: visible !important; }
+      #printable-ticket { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+  <div id="root"></div>
+
+  <!-- Vite module entry -->
+  <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Fallback standalone runner if opened directly as file:/// in browser without Vite server -->
+  <script type="text/babel">
+    if (!window.__VITE_LOADED__) {
+      const { useState } = React;
+
+      const COUNTRIES = [
+        { code: '+91', name: 'India', flag: '🇮🇳', len: 10, pattern: /^[6-9]\d{9}$/, placeholder: '9876543210', hint: '10 digits starting with 6-9' },
+        { code: '+1', name: 'USA/Canada', flag: '🇺🇸', len: 10, pattern: /^\d{10}$/, placeholder: '2025550143', hint: '10 numeric digits' },
+        { code: '+44', name: 'UK', flag: '🇬🇧', len: 10, pattern: /^[1-9]\d{9}$/, placeholder: '7911123456', hint: '10 digits starting with non-zero' },
+        { code: '+971', name: 'UAE', flag: '🇦🇪', len: 9, pattern: /^[5]\d{8}$/, placeholder: '501234567', hint: '9 digits starting with 5' },
+        { code: '+65', name: 'Singapore', flag: '🇸🇬', len: 8, pattern: /^[89]\d{7}$/, placeholder: '81234567', hint: '8 digits starting with 8 or 9' }
+      ];
+
+      const BUSES = [
+        { id: 1, name: 'Zingbus Express AC Sleeper', type: '2+1 Sleeper Premium', dept: '21:00', arr: '06:30', duration: '9h 30m', fare: 850, rating: 4.8 },
+        { id: 2, name: 'IntrCity SmartBus Volvo Multi-Axle', type: 'A/C Semi-Sleeper (2+2)', dept: '22:15', arr: '07:45', duration: '9h 30m', fare: 1100, rating: 4.9 },
+        { id: 3, name: 'Greenline Travels Bharat Benz', type: 'Luxury AC Sleeper', dept: '23:30', arr: '08:45', duration: '9h 15m', fare: 950, rating: 4.6 }
+      ];
+
+      function StandaloneApp() {
+        const [step, setStep] = useState(1);
+        const [search, setSearch] = useState({ from: 'Mumbai', to: 'Goa', date: new Date().toISOString().split('T')[0] });
+        const [searchErrs, setSearchErrs] = useState({});
+        const [bus, setBus] = useState(BUSES[0]);
+        const [seats, setSeats] = useState(['A1', 'A2']);
+        const [seatErr, setSeatErr] = useState('');
+        const [passenger, setPassenger] = useState({
+          fullName: 'Vedant Sharma',
+          email: 'vedant@example.com',
+          countryCode: '+91',
+          phone: '9876543210',
+          age: '21',
+          gender: 'Male',
+          terms: true
+        });
+        const [pErrs, setPErrs] = useState({});
+        const [pTouched, setPTouched] = useState({});
+        const [promo, setPromo] = useState('');
+        const [discount, setDiscount] = useState(0);
+        const [promoMsg, setPromoMsg] = useState('');
+        const [payment, setPayment] = useState({ card: '4532 8976 1234 5678', name: 'VEDANT SHARMA', exp: '12/28', cvv: '891' });
+        const [payErrs, setPayErrs] = useState({});
+
+        // Step 1 Validation
+        const validateSearch = () => {
+          const errs = {};
+          if (!search.from.trim()) errs.from = 'Departure city required';
+          if (!search.to.trim()) errs.to = 'Destination city required';
+          if (search.from.trim().toLowerCase() === search.to.trim().toLowerCase()) errs.to = 'Source and Destination cannot match';
+          const today = new Date().toISOString().split('T')[0];
+          if (!search.date || search.date < today) errs.date = 'Date cannot be in the past';
+          setSearchErrs(errs);
+          return Object.keys(errs).length === 0;
+        };
+
+        // Step 3 Validation
+        const validateField = (name, val, state = passenger) => {
+          if (name === 'fullName') {
+            if (!val.trim()) return 'Full Name is required.';
+            if (!/^[A-Za-z\s]{3,40}$/.test(val.trim())) return 'Only letters allowed (3-40 chars).';
+          }
+          if (name === 'email') {
+            if (!val.trim()) return 'Email is required.';
+            if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val.trim())) return 'Invalid email format.';
+          }
+          if (name === 'phone') {
+            const country = COUNTRIES.find(c => c.code === state.countryCode) || COUNTRIES[0];
+            const clean = val.replace(/\D/g, '');
+            if (!clean) return 'Phone number required.';
+            if (!country.pattern.test(clean)) return `Invalid format for ${country.name}. ${country.hint}.`;
+          }
+          if (name === 'age') {
+            const num = parseInt(val, 10);
+            if (!val || isNaN(num) || num < 5 || num > 100) return 'Age must be between 5 and 100.';
+          }
+          if (name === 'terms' && !val) return 'Must accept terms.';
+          return '';
+        };
+
+        const validatePassenger = () => {
+          const fields = ['fullName', 'email', 'phone', 'age', 'terms'];
+          const errs = {};
+          fields.forEach(f => {
+            const e = validateField(f, passenger[f]);
+            if (e) errs[f] = e;
+          });
+          setPErrs(errs);
+          setPTouched(fields.reduce((acc, k) => ({ ...acc, [k]: true }), {}));
+          return Object.keys(errs).length === 0;
+        };
+
+        // Step 4 Validation
+        const validatePay = () => {
+          const errs = {};
+          const c = payment.card.replace(/\s+/g, '');
+          if (!/^\d{16}$/.test(c)) errs.card = 'Card must be 16 digits';
+          if (!/^[A-Za-z\s]{3,30}$/.test(payment.name.trim())) errs.name = 'Valid cardholder name required';
+          if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(payment.exp.trim())) errs.exp = 'MM/YY required';
+          if (!/^\d{3,4}$/.test(payment.cvv.trim())) errs.cvv = '3-4 digits CVV';
+          setPayErrs(errs);
+          return Object.keys(errs).length === 0;
+        };
+
+        const baseTotal = bus.fare * seats.length;
+        const total = Math.max(0, baseTotal + Math.round(baseTotal * 0.05) - discount);
+
+        return (
+          <div className="max-w-4xl mx-auto p-4 sm:p-6">
+            <header className="flex justify-between items-center pb-4 border-b border-slate-200 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl">🚌</div>
+                <div>
+                  <h1 className="text-xl font-black text-slate-900">BusGo ReactJS Application</h1>
+                  <p className="text-xs text-slate-500">Live Client-Side Form & Interactivity Demonstration</p>
+                </div>
+              </div>
+              <span className="text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold px-3 py-1 rounded-lg">React 18 Active</span>
+            </header>
+
+            {/* Stepper */}
+            <div className="grid grid-cols-5 gap-2 text-center text-xs font-semibold mb-6">
+              {['1. Search', '2. Seat Matrix', '3. Passenger', '4. Payment', '5. E-Ticket'].map((label, idx) => (
+                <div key={label} className={`py-2 px-1 rounded-lg border ${step === idx + 1 ? 'bg-indigo-600 text-white' : step > idx + 1 ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-white text-slate-400'}`}>
+                  {step > idx + 1 ? '✓ ' : ''}{label}
+                </div>
+              ))}
+            </div>
+
+            {/* STEP 1 */}
+            {step === 1 && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <h2 className="text-base font-bold text-slate-800">Step 1: Search & Route Validation</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">From</label>
+                    <input className={`w-full p-2 border rounded-lg text-sm ${searchErrs.from ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} value={search.from} onChange={e => setSearch({ ...search, from: e.target.value })} />
+                    {searchErrs.from && <p className="text-xs text-red-500 mt-1">{searchErrs.from}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">To</label>
+                    <input className={`w-full p-2 border rounded-lg text-sm ${searchErrs.to ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} value={search.to} onChange={e => setSearch({ ...search, to: e.target.value })} />
+                    {searchErrs.to && <p className="text-xs text-red-500 mt-1">{searchErrs.to}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Date</label>
+                    <input type="date" className={`w-full p-2 border rounded-lg text-sm ${searchErrs.date ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} value={search.date} onChange={e => setSearch({ ...search, date: e.target.value })} />
+                    {searchErrs.date && <p className="text-xs text-red-500 mt-1">{searchErrs.date}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <label className="text-xs font-bold text-slate-500 block uppercase">Select Fleet</label>
+                  {BUSES.map(b => (
+                    <div key={b.id} onClick={() => setBus(b)} className={`p-3 rounded-xl border cursor-pointer flex justify-between items-center ${bus.id === b.id ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200'}`}>
+                      <div>
+                        <div className="font-bold text-slate-900 text-sm">{b.name} <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">★ {b.rating}</span></div>
+                        <p className="text-xs text-slate-500">{b.type} &bull; {b.dept} &rarr; {b.arr}</p>
+                      </div>
+                      <div className="text-right font-black text-indigo-700">₹{b.fare}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button onClick={() => { if (validateSearch()) setStep(2); }} className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl text-sm hover:bg-indigo-700">
+                    Choose Seats &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2 */}
+            {step === 2 && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <h2 className="text-base font-bold text-slate-800">Step 2: Interactive Seat Matrix (Max 4 Seats)</h2>
+                <div className="max-w-xs mx-auto bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  {[['A1','A2','','A3','A4'], ['B1','B2','','B3','B4'], ['C1','C2','','C3','C4'], ['D1','D2','','D3','D4']].map((r, rI) => (
+                    <div key={rI} className="flex justify-between items-center">
+                      {r.map((s, cI) => {
+                        if (!s) return <div key={cI} className="w-8 text-center text-xs text-slate-300">|</div>;
+                        const sel = seats.includes(s);
+                        return (
+                          <button key={s} onClick={() => {
+                            if (sel) { setSeats(seats.filter(x => x !== s)); setSeatErr(''); }
+                            else {
+                              if (seats.length >= 4) { setSeatErr('Max 4 seats allowed'); return; }
+                              setSeats([...seats, s]); setSeatErr('');
+                            }
+                          }} className={`w-10 h-9 rounded-lg text-xs font-bold border ${sel ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-300'}`}>
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+                {seatErr && <p className="text-xs text-red-500 text-center font-bold">{seatErr}</p>}
+                <div className="flex justify-between items-center p-3 bg-indigo-50/50 rounded-xl text-xs font-bold">
+                  <span>Selected: {seats.join(', ') || 'None'}</span>
+                  <span>Subtotal: ₹{bus.fare * seats.length}</span>
+                </div>
+                <div className="flex justify-between pt-2">
+                  <button onClick={() => setStep(1)} className="text-xs font-bold text-slate-500">&larr; Back</button>
+                  <button onClick={() => { if (!seats.length) { setSeatErr('Please pick at least 1 seat'); return; } setStep(3); }} className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl text-sm hover:bg-indigo-700">Continue &rarr;</button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3 */}
+            {step === 3 && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <h2 className="text-base font-bold text-slate-800">Step 3: Passenger Information & Live Validation</h2>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Full Legal Name</label>
+                  <input className={`w-full p-2 border rounded-lg text-sm ${pTouched.fullName && pErrs.fullName ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} value={passenger.fullName} onChange={e => {
+                    setPassenger({ ...passenger, fullName: e.target.value });
+                    if (pTouched.fullName) setPErrs(prev => ({ ...prev, fullName: validateField('fullName', e.target.value) }));
+                  }} onBlur={() => { setPTouched(prev => ({ ...prev, fullName: true })); setPErrs(prev => ({ ...prev, fullName: validateField('fullName', passenger.fullName) })); }} />
+                  {pTouched.fullName && pErrs.fullName && <p className="text-xs text-red-500 mt-1">{pErrs.fullName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Email Address</label>
+                  <input className={`w-full p-2 border rounded-lg text-sm ${pTouched.email && pErrs.email ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} value={passenger.email} onChange={e => {
+                    setPassenger({ ...passenger, email: e.target.value });
+                    if (pTouched.email) setPErrs(prev => ({ ...prev, email: validateField('email', e.target.value) }));
+                  }} onBlur={() => { setPTouched(prev => ({ ...prev, email: true })); setPErrs(prev => ({ ...prev, email: validateField('email', passenger.email) })); }} />
+                  {pTouched.email && pErrs.email && <p className="text-xs text-red-500 mt-1">{pErrs.email}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">International Phone Number</label>
+                  <div className="flex gap-2">
+                    <select className="p-2 border border-slate-300 rounded-lg text-xs" value={passenger.countryCode} onChange={e => {
+                      const updated = { ...passenger, countryCode: e.target.value };
+                      setPassenger(updated);
+                      if (pTouched.phone) setPErrs(prev => ({ ...prev, phone: validateField('phone', passenger.phone, updated) }));
+                    }}>
+                      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
+                    </select>
+                    <input className={`flex-1 p-2 border rounded-lg text-sm ${pTouched.phone && pErrs.phone ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} value={passenger.phone} onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setPassenger({ ...passenger, phone: val });
+                      if (pTouched.phone) setPErrs(prev => ({ ...prev, phone: validateField('phone', val) }));
+                    }} onBlur={() => { setPTouched(prev => ({ ...prev, phone: true })); setPErrs(prev => ({ ...prev, phone: validateField('phone', passenger.phone) })); }} />
+                  </div>
+                  {pTouched.phone && pErrs.phone && <p className="text-xs text-red-500 mt-1">{pErrs.phone}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Age</label>
+                    <input type="number" className="w-full p-2 border border-slate-300 rounded-lg text-sm" value={passenger.age} onChange={e => setPassenger({ ...passenger, age: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Gender</label>
+                    <select className="w-full p-2 border border-slate-300 rounded-lg text-sm" value={passenger.gender} onChange={e => setPassenger({ ...passenger, gender: e.target.value })}>
+                      <option>Male</option><option>Female</option><option>Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 pt-2 text-xs cursor-pointer">
+                  <input type="checkbox" checked={passenger.terms} onChange={e => setPassenger({ ...passenger, terms: e.target.checked })} />
+                  I accept booking terms & passenger validation guidelines.
+                </label>
+                {pTouched.terms && pErrs.terms && <p className="text-xs text-red-500">{pErrs.terms}</p>}
+
+                <div className="flex justify-between pt-4">
+                  <button onClick={() => setStep(2)} className="text-xs font-bold text-slate-500">&larr; Back</button>
+                  <button onClick={() => { if (validatePassenger()) setStep(4); }} className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl text-sm hover:bg-indigo-700">Proceed to Payment &rarr;</button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4 */}
+            {step === 4 && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <h2 className="text-base font-bold text-slate-800">Step 4: Promo Code & Payment Validation</h2>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex gap-2">
+                  <input placeholder="Promo Code (FIRST20)" value={promo} onChange={e => setPromo(e.target.value.toUpperCase())} className="flex-1 p-2 border rounded-lg text-xs font-mono uppercase" />
+                  <button onClick={() => {
+                    if (promo === 'FIRST20') { setDiscount(200); setPromoMsg('FIRST20 Applied! ₹200 OFF'); }
+                    else { setDiscount(0); setPromoMsg('Invalid Code'); }
+                  }} className="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-lg">Apply</button>
+                </div>
+                {promoMsg && <p className="text-xs text-indigo-700 font-bold">{promoMsg}</p>}
+
+                <div className="p-3 bg-indigo-50 rounded-xl text-xs space-y-1 font-semibold">
+                  <div className="flex justify-between"><span>Base Fare:</span><span>₹{baseTotal}</span></div>
+                  <div className="flex justify-between"><span>GST (5%):</span><span>₹{Math.round(baseTotal*0.05)}</span></div>
+                  {discount > 0 && <div className="flex justify-between text-emerald-600"><span>Discount:</span><span>-₹{discount}</span></div>}
+                  <div className="flex justify-between border-t border-indigo-200 pt-1 text-sm font-black text-indigo-900"><span>Total Payable:</span><span>₹{total}</span></div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Card Number (16 Digits)</label>
+                    <input className="w-full p-2 border rounded-lg text-sm font-mono" value={payment.card} onChange={e => {
+                      let val = e.target.value.replace(/\D/g, '').substring(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
+                      setPayment({ ...payment, card: val });
+                    }} />
+                    {payErrs.card && <p className="text-xs text-red-500 mt-1">{payErrs.card}</p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Expiry (MM/YY)</label>
+                      <input className="w-full p-2 border rounded-lg text-sm font-mono" value={payment.exp} onChange={e => setPayment({ ...payment, exp: e.target.value })} />
+                      {payErrs.exp && <p className="text-xs text-red-500 mt-1">{payErrs.exp}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">CVV</label>
+                      <input type="password" maxLength="4" className="w-full p-2 border rounded-lg text-sm font-mono" value={payment.cvv} onChange={e => setPayment({ ...payment, cvv: e.target.value })} />
+                      {payErrs.cvv && <p className="text-xs text-red-500 mt-1">{payErrs.cvv}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <button onClick={() => setStep(3)} className="text-xs font-bold text-slate-500">&larr; Back</button>
+                  <button onClick={() => { if (validatePay()) setStep(5); }} className="bg-emerald-600 text-white font-bold py-2 px-6 rounded-xl text-sm hover:bg-emerald-700">Pay ₹{total} & Confirm &rarr;</button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5 */}
+            {step === 5 && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center space-y-4">
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>
+                <h2 className="text-xl font-bold text-slate-900">Booking Validated & Confirmed!</h2>
+                <div id="printable-ticket" className="border-2 border-dashed border-indigo-300 rounded-2xl p-5 bg-indigo-50/20 max-w-lg mx-auto text-left text-xs space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-black text-indigo-700 text-lg">BusGo E-Ticket</span>
+                    <span className="font-mono bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">PNR-782910</span>
+                  </div>
+                  <div><strong>Route:</strong> {search.from} &rarr; {search.to} ({search.date})</div>
+                  <div><strong>Seats:</strong> {seats.join(', ')} &bull; <strong>Coach:</strong> {bus.name}</div>
+                  <div><strong>Passenger:</strong> {passenger.fullName} ({passenger.age}y, {passenger.gender})</div>
+                  <div><strong>Contact:</strong> {passenger.countryCode} {passenger.phone}</div>
+                  <div className="pt-2 border-t flex justify-between font-bold text-emerald-700"><span>Paid:</span><span>₹{total}</span></div>
+                </div>
+                <div className="flex justify-center gap-3 pt-2">
+                  <button onClick={() => window.print()} className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl text-xs">🖨️ Print Ticket PDF</button>
+                  <button onClick={() => setStep(1)} className="bg-slate-100 text-slate-700 font-bold py-2 px-4 rounded-xl text-xs">Book Again</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<StandaloneApp />);
+    }
+  </script>
+</body>
+</html>

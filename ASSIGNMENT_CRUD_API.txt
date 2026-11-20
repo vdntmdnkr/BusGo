@@ -1,0 +1,143 @@
+Assignment 10
+
+Name : [Your Name]
+Roll No : [Your Roll No]
+PRN : [Your PRN]
+
+Title: Create an API to Perform CRUD Operations in the Database, Deploy on a Web Hosting Provider and Test Using Postman
+
+Live URL: https://busgo-backend.onrender.com
+Database: MongoDB Atlas | Framework: Express.js + Node.js | Testing: Postman
+
+
+Objective
+
+To build and deploy a RESTful API connected to MongoDB Atlas that performs full CRUD operations, with an HTML/JS frontend as the UI and Postman for API testing.
+
+
+Tech Stack
+Node.js + Express.js  →  REST API Backend
+MongoDB Atlas          →  Cloud NoSQL Database
+Mongoose               →  Schema & ODM
+JWT + bcrypt.js        →  Authentication & Security
+HTML + JavaScript      →  Frontend UI (fetch API calls)
+Render.com             →  Cloud Deployment
+
+
+API Endpoints (CRUD Mapping)
+
+Operation  Method  Endpoint                      Description
+---------  ------  ----------------------------  ----------------------------
+CREATE     POST    /api/auth/register            Register new user
+READ       GET     /api/buses?from=X&to=Y        Search available buses
+READ       GET     /api/bookings/my              Get all my bookings
+UPDATE     PUT     /api/auth/me                  Update user profile
+DELETE     PUT     /api/bookings/:id/cancel      Cancel booking (soft delete)
+
+
+A. CREATE — Register User (src/controllers/authController.js)
+
+const register = async (req, res, next) => {
+  try {
+    const { name, email, password } = req.body;
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ success: false, message: 'Email already registered.' });
+
+    const user = await User.create({ name, email, password }); // password auto-hashed
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ success: true, token, user: user.toPublicJSON() });
+  } catch (err) { next(err); }
+};
+
+// Frontend UI call (script.js)
+const data = await apiFetch('/auth/register', {
+  method: 'POST',
+  body: JSON.stringify({ name, email, password })
+});
+
+
+B. READ — Search Buses (src/controllers/busController.js)
+
+const searchBuses = async (req, res, next) => {
+  try {
+    const { from, to } = req.query;
+    const buses = await Bus.find({
+      from: from.toLowerCase(), to: to.toLowerCase(),
+      isActive: true, availableSeats: { $gt: 0 }
+    }).sort({ fare: 1 });
+    res.status(200).json({ success: true, count: buses.length, data: buses });
+  } catch (err) { next(err); }
+};
+
+// Frontend UI call (script.js)
+const res = await apiFetch(`/buses?from=${from}&to=${to}&date=${date}`);
+
+
+C. UPDATE — Edit Profile (src/controllers/authController.js)
+
+const updateMe = async (req, res, next) => {
+  try {
+    const updates = {};
+    ['name', 'phone', 'city', 'gender'].forEach(f => {
+      if (req.body[f] !== undefined) updates[f] = req.body[f];
+    });
+    const updated = await User.findByIdAndUpdate(req.user._id, { $set: updates }, { new: true });
+    res.status(200).json({ success: true, message: 'Profile updated.', user: updated.toPublicJSON() });
+  } catch (err) { next(err); }
+};
+
+// Frontend UI call (script.js)
+const res = await apiFetch('/auth/me', {
+  method: 'PUT',
+  body: JSON.stringify({ name, phone, city })
+});
+
+
+D. DELETE — Cancel Booking (src/controllers/bookingController.js)
+
+const cancelBooking = async (req, res, next) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found.' });
+
+    booking.status = 'cancelled';     // Soft delete — record kept for audit
+    booking.paymentStatus = 'refunded';
+    await booking.save();
+
+    await User.findByIdAndUpdate(req.user._id, { $inc: { walletBalance: booking.totalFare } });
+    res.status(200).json({ success: true, message: 'Booking cancelled. Refund credited to wallet.' });
+  } catch (err) { next(err); }
+};
+
+// Frontend UI call (script.js)
+const res = await apiFetch(`/bookings/${bookingId}/cancel`, { method: 'PUT' });
+
+
+Postman Test Results
+
+POST /api/auth/register
+  Body   : { "name": "Demo User", "email": "demo@busgo.app", "password": "demo@123" }
+  Result : 201 → { "success": true, "token": "eyJ...", "user": { "role": "user" } }
+
+GET /api/buses?from=mumbai&to=goa
+  Result : 200 → { "success": true, "count": 3, "data": [...buses...] }
+
+PUT /api/auth/me  (Header: Authorization: Bearer <token>)
+  Body   : { "name": "Demo User", "city": "Pune" }
+  Result : 200 → { "success": true, "message": "Profile updated." }
+
+PUT /api/bookings/:id/cancel  (Header: Authorization: Bearer <token>)
+  Result : 200 → { "success": true, "message": "Booking cancelled. Refund credited to wallet." }
+
+
+Deployment (Render.com)
+
+1. Push code to GitHub
+2. Render → New Web Service → Connect repo
+3. Root Directory : BusGo/backend
+4. Start Command  : node src/server.js
+5. Environment Variables:
+   MONGO_URI  = mongodb+srv://<user>:<pass>@cluster.mongodb.net/busgo
+   JWT_SECRET = busgo_secure_secret_2026
+   NODE_ENV   = production
+6. Deploy → Live HTTPS URL generated automatically
